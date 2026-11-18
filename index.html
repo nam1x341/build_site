@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>СТРОЙБЮРО — ремонт квартир под ключ с фиксированной сметой</title>
+  <meta name="description" content="Ремонт квартир под ключ в срок по договору. Фиксированная смета, гарантия 5 лет. Рассчитайте стоимость ремонта онлайн за 1 минуту.">
+
+  <!-- Шрифт Manrope (Google Fonts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS через CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Настройка Tailwind: шрифт и фирменные цвета
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            graphite: { 900: '#1c1f24', 800: '#262a31', 700: '#373c45', 500: '#6b7280' },
+            accent: { DEFAULT: '#f59e0b', dark: '#d97706', soft: '#fff4de' },
+            paper: '#f5f6f8'
+          },
+          boxShadow: {
+            card: '0 10px 30px -12px rgba(28,31,36,.18)',
+            lift: '0 22px 45px -15px rgba(28,31,36,.28)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Плавная прокрутка + отступ под фиксированную шапку */
+    html { scroll-behavior: smooth; }
+    section[id] { scroll-margin-top: 84px; }
+    body { font-family: 'Manrope', system-ui, sans-serif; color: #1c1f24; background: #fff; }
+
+    /* Ползунок площади: кастомный вид */
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px; outline: none;
+      background: linear-gradient(to right, #f59e0b var(--fill, 30%), #e5e7eb var(--fill, 30%)); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+      background: #fff; border: 4px solid #f59e0b; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+    input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff;
+      border: 4px solid #f59e0b; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+
+    /* Выбор «плиткой» через radio/checkbox */
+    .choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .choice .box { border: 2px solid #e5e7eb; transition: all .2s; cursor: pointer; background: #fff; }
+    .choice:hover .box { border-color: #f59e0b66; transform: translateY(-1px); }
+    .choice input:checked + .box { border-color: #f59e0b; background: #fff4de; box-shadow: 0 8px 20px -10px rgba(245,158,11,.7); }
+    .choice input:focus-visible + .box { outline: 3px solid #f59e0b66; outline-offset: 2px; }
+
+    /* Анимация появления блоков при прокрутке */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.is-visible { opacity: 1; transform: none; }
+
+    /* Аккордеон FAQ: плавное раскрытие */
+    .faq-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+    .faq-item.open .faq-body { grid-template-rows: 1fr; }
+    .faq-body > div { overflow: hidden; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); background: #f59e0b; color: #1c1f24; }
+
+    /* Уведомление (toast) */
+    #toast { transform: translateY(30px); opacity: 0; pointer-events: none; transition: all .4s ease; }
+    #toast.show { transform: none; opacity: 1; pointer-events: auto; }
+
+    /* Модальное окно */
+    #modal { transition: opacity .25s ease; }
+    #modal.hidden-modal { opacity: 0; pointer-events: none; }
+    #modal .panel { transition: transform .25s ease; }
+    #modal.hidden-modal .panel { transform: translateY(20px) scale(.97); }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { transition: none; opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+
+<body class="antialiased bg-white">
+
+  <!-- ===================== ШАПКА ===================== -->
+  <header id="header" class="fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 transition-shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-4">
+      <!-- Логотип -->
+      <a href="#top" class="flex items-center gap-2.5 shrink-0" aria-label="СТРОЙБЮРО — на главную">
+        <span class="w-10 h-10 rounded-xl bg-graphite-900 grid place-items-center">
+          <svg viewBox="0 0 24 24" class="w-6 h-6 text-accent" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/></svg>
+        </span>
+        <span class="font-extrabold text-lg tracking-tight">СТРОЙ<span class="text-accent-dark">БЮРО</span></span>
+      </a>
+
+      <!-- Меню (десктоп) -->
+      <nav class="hidden lg:flex items-center gap-8 text-sm font-semibold text-graphite-700" aria-label="Основное меню">
+        <a class="hover:text-accent-dark transition" href="#calculator">Калькулятор</a>
+        <a class="hover:text-accent-dark transition" href="#portfolio">Портфолио</a>
+        <a class="hover:text-accent-dark transition" href="#steps">Этапы работы</a>
+        <a class="hover:text-accent-dark transition" href="#faq">Вопросы</a>
+        <a class="hover:text-accent-dark transition" href="#contacts">Контакты</a>
+      </nav>
+
+      <!-- Телефон + кнопка -->
+      <div class="flex items-center gap-3">
+        <a href="tel:+78005550142" class="hidden md:block text-sm font-extrabold hover:text-accent-dark transition">8 (800) 555-01-42</a>
+        <button data-open-modal class="hidden sm:inline-flex items-center px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-dark text-graphite-900 font-bold text-sm transition shadow-card hover:shadow-lift">
+          Вызвать замерщика
+        </button>
+        <!-- Бургер -->
+        <button id="burger" class="lg:hidden w-11 h-11 grid place-items-center rounded-xl border border-gray-200" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobileMenu">
+          <svg id="burgerIcon" viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Мобильное меню -->
+    <div id="mobileMenu" class="lg:hidden hidden border-t border-gray-100 bg-white">
+      <nav class="px-4 py-4 flex flex-col gap-1 font-semibold" aria-label="Мобильное меню">
+        <a class="mobile-link py-3 px-3 rounded-lg hover:bg-paper" href="#calculator">Калькулятор</a>
+        <a class="mobile-link py-3 px-3 rounded-lg hover:bg-paper" href="#portfolio">Портфолио</a>
+        <a class="mobile-link py-3 px-3 rounded-lg hover:bg-paper" href="#steps">Этапы работы</a>
+        <a class="mobile-link py-3 px-3 rounded-lg hover:bg-paper" href="#faq">Вопросы</a>
+        <a class="mobile-link py-3 px-3 rounded-lg hover:bg-paper" href="#contacts">Контакты</a>
+        <a href="tel:+78005550142" class="py-3 px-3 font-extrabold">8 (800) 555-01-42</a>
+        <button data-open-modal class="mt-2 w-full py-3.5 rounded-xl bg-accent text-graphite-900 font-bold">Вызвать замерщика</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- ===================== HERO ===================== -->
+    <section class="pt-[110px] sm:pt-[130px] pb-16 lg:pb-24 bg-gradient-to-b from-paper to-white overflow-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        <div class="lg:col-span-6">
+          <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-soft text-accent-dark text-xs font-bold uppercase tracking-wider">
+            <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span> Ремонт под ключ
+          </span>
+          <h1 class="mt-5 text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.05] tracking-tight">
+            Сделаем ремонт <span class="text-accent-dark">точно в срок</span> — или заплатим неустойку
+          </h1>
+          <p class="mt-6 text-lg text-graphite-500 max-w-xl">
+            Фиксированная смета в договоре, поэтапная оплата и личный прораб на объекте. Без сюрпризов, доплат и бесконечных «ещё недельку».
+          </p>
+
+          <!-- 3 буллита с цифрами -->
+          <ul class="mt-8 grid grid-cols-3 gap-3 sm:gap-5 max-w-xl">
+            <li class="bg-white rounded-2xl p-4 shadow-card border border-gray-100">
+              <div class="text-2xl sm:text-3xl font-extrabold">12 лет</div>
+              <div class="text-xs sm:text-sm text-graphite-500 mt-1">опыта и 850+ сданных квартир</div>
+            </li>
+            <li class="bg-white rounded-2xl p-4 shadow-card border border-gray-100">
+              <div class="text-2xl sm:text-3xl font-extrabold">5 лет</div>
+              <div class="text-xs sm:text-sm text-graphite-500 mt-1">гарантии на все виды работ</div>
+            </li>
+            <li class="bg-white rounded-2xl p-4 shadow-card border border-gray-100">
+              <div class="text-2xl sm:text-3xl font-extrabold">100%</div>
+              <div class="text-xs sm:text-sm text-graphite-500 mt-1">фиксированная смета без доплат</div>
+            </li>
+          </ul>
+
+          <div class="mt-9 flex flex-col sm:flex-row gap-3">
+            <a href="#calculator" class="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-accent hover:bg-accent-dark text-graphite-900 font-bold shadow-card hover:shadow-lift transition">
+              Рассчитать стоимость
+              <svg class="w-5 h-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <button data-open-modal class="inline-flex justify-center items-center px-7 py-4 rounded-xl border-2 border-graphite-900 font-bold hover:bg-graphite-900 hover:text-white transition">
+              Вызвать замерщика
+            </button>
+          </div>
+        </div>
+
+        <!-- Фото интерьера -->
+        <div class="lg:col-span-6 relative">
+          <div class="relative rounded-[28px] overflow-hidden shadow-lift aspect-[4/3] sm:aspect-[5/4] bg-graphite-800">
+            <img src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1400&q=80"
+                 alt="Современная гостиная после ремонта" class="w-full h-full object-cover" fetchpriority="high"
+                 onerror="this.style.display='none'">
+          </div>
+          <!-- Плавающая карточка -->
+          <div class="absolute -bottom-5 left-4 sm:-left-6 bg-white rounded-2xl shadow-lift p-4 flex items-center gap-3 border border-gray-100">
+            <span class="w-11 h-11 rounded-xl bg-accent grid place-items-center">
+              <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+            <div>
+              <div class="font-extrabold leading-tight">Сдача в срок по договору</div>
+              <div class="text-xs text-graphite-500">неустойка 0,5% в день за просрочку</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== КАЛЬКУЛЯТОР ===================== -->
+    <section id="calculator" class="py-16 lg:py-24 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="max-w-2xl reveal">
+          <span class="text-accent-dark font-bold text-sm uppercase tracking-wider">Калькулятор сметы</span>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">Узнайте стоимость ремонта за минуту</h2>
+          <p class="mt-3 text-graphite-500">Выберите параметры — сумма и сроки пересчитаются мгновенно. Точную смету составим после бесплатного замера.</p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-12 gap-6 lg:gap-8">
+          <!-- Левая часть: параметры -->
+          <form id="calcForm" class="lg:col-span-7 bg-paper rounded-3xl p-5 sm:p-8 shadow-card reveal" onsubmit="return false">
+
+            <!-- 1. Тип жилья -->
+            <fieldset>
+              <legend class="font-extrabold text-lg mb-3"><span class="text-accent-dark">1.</span> Тип жилья</legend>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="choice relative">
+                  <input type="radio" name="housing" value="new" checked>
+                  <span class="box block rounded-2xl p-4">
+                    <span class="block font-bold">Новостройка</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Черновая отделка, без демонтажа</span>
+                  </span>
+                </label>
+                <label class="choice relative">
+                  <input type="radio" name="housing" value="old">
+                  <span class="box block rounded-2xl p-4">
+                    <span class="block font-bold">Вторичка</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Демонтаж, выравнивание, коммуникации</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- 2. Вид ремонта -->
+            <fieldset class="mt-7">
+              <legend class="font-extrabold text-lg mb-3"><span class="text-accent-dark">2.</span> Вид ремонта</legend>
+              <div class="grid sm:grid-cols-3 gap-3">
+                <label class="choice relative">
+                  <input type="radio" name="repair" value="cosmetic">
+                  <span class="box block rounded-2xl p-4 h-full">
+                    <span class="block font-bold">Косметический</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Обои, покраска, полы, сантехника</span>
+                  </span>
+                </label>
+                <label class="choice relative">
+                  <input type="radio" name="repair" value="capital" checked>
+                  <span class="box block rounded-2xl p-4 h-full">
+                    <span class="block font-bold">Капитальный</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Замена электрики, сантехники, стяжка</span>
+                  </span>
+                </label>
+                <label class="choice relative">
+                  <input type="radio" name="repair" value="design">
+                  <span class="box block rounded-2xl p-4 h-full">
+                    <span class="block font-bold">Дизайнерский</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Премиум-материалы, авторский надзор</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- 3. Площадь -->
+            <div class="mt-7">
+              <div class="flex items-end justify-between mb-3">
+                <label for="area" class="font-extrabold text-lg"><span class="text-accent-dark">3.</span> Площадь квартиры</label>
+                <div class="text-right"><span id="areaValue" class="text-3xl font-extrabold">60</span> <span class="font-bold text-graphite-500">м²</span></div>
+              </div>
+              <input id="area" type="range" min="20" max="200" step="1" value="60" class="w-full" aria-label="Площадь в квадратных метрах">
+              <div class="flex justify-between text-xs text-graphite-500 mt-2"><span>20 м²</span><span>110 м²</span><span>200 м²</span></div>
+            </div>
+
+            <!-- 4. Доп. опции -->
+            <fieldset class="mt-7">
+              <legend class="font-extrabold text-lg mb-3"><span class="text-accent-dark">4.</span> Дополнительные опции</legend>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <label class="choice relative">
+                  <input type="checkbox" name="opt" value="project">
+                  <span class="box block rounded-2xl p-4">
+                    <span class="block font-bold">Дизайн-проект</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Планировка, 3D-визуализации, чертежи · +1 800 ₽/м²</span>
+                  </span>
+                </label>
+                <label class="choice relative">
+                  <input type="checkbox" name="opt" value="materials">
+                  <span class="box block rounded-2xl p-4">
+                    <span class="block font-bold">Закупка материалов</span>
+                    <span class="block text-xs text-graphite-500 mt-1">Подбор, доставка, контроль качества · +4% к смете</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+          </form>
+
+          <!-- Правая часть: итог -->
+          <aside class="lg:col-span-5 reveal">
+            <div class="lg:sticky lg:top-24 bg-graphite-900 text-white rounded-3xl p-6 sm:p-8 shadow-lift">
+              <div class="text-sm text-white/60 font-semibold">Ориентировочная стоимость</div>
+              <div id="totalPrice" class="mt-1 text-4xl sm:text-5xl font-extrabold tracking-tight tabular-nums">0 ₽</div>
+              <div id="pricePerM2" class="text-sm text-white/60 mt-1">≈ 0 ₽ за м²</div>
+
+              <div class="my-6 h-px bg-white/10"></div>
+
+              <dl class="space-y-3 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-white/60">Работы</dt><dd id="sumWork" class="font-bold tabular-nums">—</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-white/60">Дизайн-проект</dt><dd id="sumProject" class="font-bold tabular-nums">—</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-white/60">Закупка материалов</dt><dd id="sumMaterials" class="font-bold tabular-nums">—</dd></div>
+              </dl>
+
+              <div class="mt-6 rounded-2xl bg-white/5 p-4 flex items-center gap-4">
+                <span class="w-12 h-12 rounded-xl bg-accent text-graphite-900 grid place-items-center shrink-0">
+                  <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div>
+                  <div class="text-xs text-white/60">Примерные сроки</div>
+                  <div id="totalTime" class="font-extrabold text-lg">—</div>
+                </div>
+              </div>
+
+              <button id="calcToModal" class="mt-6 w-full py-4 rounded-xl bg-accent hover:bg-accent-dark text-graphite-900 font-extrabold transition">
+                Получить точную смету
+              </button>
+              <p class="text-xs text-white/40 mt-3 leading-relaxed">Расчёт предварительный и не является публичной офертой. Окончательная стоимость фиксируется в договоре после замера.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ПОРТФОЛИО ===================== -->
+    <section id="portfolio" class="py-16 lg:py-24 bg-paper">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 reveal">
+          <div class="max-w-2xl">
+            <span class="text-accent-dark font-bold text-sm uppercase tracking-wider">Портфолио</span>
+            <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">Наши выполненные объекты</h2>
+            <p class="mt-3 text-graphite-500">Листайте фото внутри карточек и фильтруйте проекты по виду ремонта.</p>
+          </div>
+          <!-- Фильтры -->
+          <div id="filters" class="flex flex-wrap gap-2" role="group" aria-label="Фильтр по виду ремонта">
+            <button class="filter-btn active px-4 py-2 rounded-full text-sm font-bold border-2 transition" data-filter="all">Все</button>
+            <button class="filter-btn px-4 py-2 rounded-full text-sm font-bold border-2 transition" data-filter="cosmetic">Косметический</button>
+            <button class="filter-btn px-4 py-2 rounded-full text-sm font-bold border-2 transition" data-filter="capital">Капитальный</button>
+            <button class="filter-btn px-4 py-2 rounded-full text-sm font-bold border-2 transition" data-filter="design">Дизайнерский</button>
+          </div>
+        </div>
+
+        <!-- Карточки генерируются JS из массива projects -->
+        <div id="portfolioGrid" class="mt-10 grid sm:grid-cols-2 gap-6 lg:gap-8"></div>
+        <p id="portfolioEmpty" class="hidden mt-10 text-center text-graphite-500">В этой категории пока нет проектов.</p>
+      </div>
+    </section>
+
+    <!-- ===================== ЭТАПЫ ===================== -->
+    <section id="steps" class="py-16 lg:py-24 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="max-w-2xl reveal">
+          <span class="text-accent-dark font-bold text-sm uppercase tracking-wider">Как мы работаем</span>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">4 шага от замера до ключей</h2>
+        </div>
+
+        <ol class="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <li class="reveal relative bg-paper rounded-3xl p-6 hover:shadow-lift hover:-translate-y-1 transition duration-300">
+            <span class="text-6xl font-extrabold text-accent/30 leading-none">01</span>
+            <h3 class="mt-3 text-xl font-extrabold">Бесплатный замер</h3>
+            <p class="mt-2 text-sm text-graphite-500">Инженер приедет в удобное время, замерит объект, оценит состояние коммуникаций и ответит на вопросы.</p>
+            <span class="mt-4 inline-block text-xs font-bold text-accent-dark">1 день</span>
+          </li>
+          <li class="reveal relative bg-paper rounded-3xl p-6 hover:shadow-lift hover:-translate-y-1 transition duration-300">
+            <span class="text-6xl font-extrabold text-accent/30 leading-none">02</span>
+            <h3 class="mt-3 text-xl font-extrabold">Смета и договор</h3>
+            <p class="mt-2 text-sm text-graphite-500">Готовим детальную смету с фиксированной ценой, график работ и подписываем договор с гарантиями.</p>
+            <span class="mt-4 inline-block text-xs font-bold text-accent-dark">2–3 дня</span>
+          </li>
+          <li class="reveal relative bg-paper rounded-3xl p-6 hover:shadow-lift hover:-translate-y-1 transition duration-300">
+            <span class="text-6xl font-extrabold text-accent/30 leading-none">03</span>
+            <h3 class="mt-3 text-xl font-extrabold">Ремонт и контроль</h3>
+            <p class="mt-2 text-sm text-graphite-500">Работает собственная бригада. Фотоотчёты каждую неделю, поэтапная оплата только за принятые работы.</p>
+            <span class="mt-4 inline-block text-xs font-bold text-accent-dark">по графику</span>
+          </li>
+          <li class="reveal relative bg-paper rounded-3xl p-6 hover:shadow-lift hover:-translate-y-1 transition duration-300">
+            <span class="text-6xl font-extrabold text-accent/30 leading-none">04</span>
+            <h3 class="mt-3 text-xl font-extrabold">Сдача ключей</h3>
+            <p class="mt-2 text-sm text-graphite-500">Генеральная уборка, совместная приёмка по чек-листу, акт и гарантийный талон на 5 лет.</p>
+            <span class="mt-4 inline-block text-xs font-bold text-accent-dark">1 день</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===================== FAQ ===================== -->
+    <section id="faq" class="py-16 lg:py-24 bg-paper">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6">
+        <div class="text-center reveal">
+          <span class="text-accent-dark font-bold text-sm uppercase tracking-wider">FAQ</span>
+          <h2 class="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight">Частые вопросы</h2>
+        </div>
+
+        <div id="faqList" class="mt-10 space-y-3">
+          <div class="faq-item bg-white rounded-2xl shadow-card">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-5 font-bold" aria-expanded="false">
+              <span>Правда ли, что смета не изменится в процессе ремонта?</span>
+              <span class="faq-icon shrink-0 w-8 h-8 rounded-full bg-paper grid place-items-center text-xl transition">+</span>
+            </button>
+            <div class="faq-body"><div><p class="px-5 sm:px-6 pb-5 text-graphite-500">Да. Цена фиксируется в договоре после замера. Изменить её можно только по вашей инициативе — например, если вы решите заменить материалы или добавить работы. Любые такие правки согласуются письменно до их выполнения.</p></div></div>
+          </div>
+          <div class="faq-item bg-white rounded-2xl shadow-card">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-5 font-bold" aria-expanded="false">
+              <span>Что будет, если вы не уложитесь в срок?</span>
+              <span class="faq-icon shrink-0 w-8 h-8 rounded-full bg-paper grid place-items-center text-xl transition">+</span>
+            </button>
+            <div class="faq-body"><div><p class="px-5 sm:px-6 pb-5 text-graphite-500">В договоре прописана неустойка 0,5% от стоимости работ за каждый день просрочки по нашей вине. Мы заинтересованы сдавать объекты вовремя, поэтому закладываем технологический запас в график.</p></div></div>
+          </div>
+          <div class="faq-item bg-white rounded-2xl shadow-card">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-5 font-bold" aria-expanded="false">
+              <span>Нужно ли мне жить на объекте или быть на связи?</span>
+              <span class="faq-icon shrink-0 w-8 h-8 rounded-full bg-paper grid place-items-center text-xl transition">+</span>
+            </button>
+            <div class="faq-body"><div><p class="px-5 sm:px-6 pb-5 text-graphite-500">Нет. Вам не нужно присутствовать на объекте постоянно. Раз в неделю вы получаете фотоотчёт и можете приехать на согласование ключевых этапов. По всем вопросам на связи личный менеджер.</p></div></div>
+          </div>
+          <div class="faq-item bg-white rounded-2xl shadow-card">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-5 font-bold" aria-expanded="false">
+              <span>Как устроена оплата?</span>
+              <span class="faq-icon shrink-0 w-8 h-8 rounded-full bg-paper grid place-items-center text-xl transition">+</span>
+            </button>
+            <div class="faq-body"><div><p class="px-5 sm:px-6 pb-5 text-graphite-500">Оплата поэтапная: небольшой аванс на старт, затем платежи после приёмки каждого этапа работ. Последний платёж — после подписания акта сдачи. Оплатить можно наличными, переводом или по счёту для юрлиц.</p></div></div>
+          </div>
+          <div class="faq-item bg-white rounded-2xl shadow-card">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-5 font-bold" aria-expanded="false">
+              <span>Что входит в гарантию 5 лет?</span>
+              <span class="faq-icon shrink-0 w-8 h-8 rounded-full bg-paper grid place-items-center text-xl transition">+</span>
+            </button>
+            <div class="faq-body"><div><p class="px-5 sm:px-6 pb-5 text-graphite-500">Гарантия распространяется на все выполненные нами работы: отделку, электрику, сантехнику, стяжку. Если обнаружится дефект, мы устраним его за свой счёт. На материалы действует гарантия производителя.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CTA ===================== -->
+    <section class="py-16 bg-graphite-900">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 text-center">
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Закажите бесплатный замер уже сегодня</h2>
+        <p class="mt-3 text-white/60">Приедем в удобное время, подготовим смету за 2 дня и ответим на все вопросы.</p>
+        <button data-open-modal class="mt-8 px-8 py-4 rounded-xl bg-accent hover:bg-accent-dark text-graphite-900 font-extrabold shadow-lift transition">Вызвать замерщика</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== ПОДВАЛ ===================== -->
+  <footer id="contacts" class="bg-white border-t border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div>
+        <a href="#top" class="flex items-center gap-2.5">
+          <span class="w-10 h-10 rounded-xl bg-graphite-900 grid place-items-center">
+            <svg viewBox="0 0 24 24" class="w-6 h-6 text-accent" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/></svg>
+          </span>
+          <span class="font-extrabold text-lg">СТРОЙ<span class="text-accent-dark">БЮРО</span></span>
+        </a>
+        <p class="mt-4 text-sm text-graphite-500">Студия ремонта квартир под ключ. Фиксированная смета, сдача в срок, гарантия 5 лет.</p>
+      </div>
+
+      <div>
+        <h3 class="font-extrabold mb-4">Контакты</h3>
+        <ul class="space-y-2 text-sm text-graphite-500">
+          <li><a href="tel:+78005550142" class="font-bold text-graphite-900 hover:text-accent-dark">8 (800) 555-01-42</a></li>
+          <li><a href="mailto:info@stroybureau.example" class="hover:text-accent-dark">info@stroybureau.example</a></li>
+          <li>г. Москва, ул. Строителей, д. 15, офис 304</li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="font-extrabold mb-4">График работы</h3>
+        <ul class="space-y-2 text-sm text-graphite-500">
+          <li class="flex justify-between gap-4"><span>Пн–Пт</span><span class="font-semibold text-graphite-900">09:00–20:00</span></li>
+          <li class="flex justify-between gap-4"><span>Суббота</span><span class="font-semibold text-graphite-900">10:00–18:00</span></li>
+          <li class="flex justify-between gap-4"><span>Воскресенье</span><span class="font-semibold text-graphite-900">выходной</span></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="font-extrabold mb-4">Реквизиты</h3>
+        <ul class="space-y-1.5 text-sm text-graphite-500">
+          <li>ООО «СтройБюро»</li>
+          <li>ИНН 0000000000 / КПП 000000000</li>
+          <li>ОГРН 0000000000000</li>
+          <li class="text-xs text-graphite-500/70 pt-1">* Реквизиты приведены для примера, замените на реальные.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-gray-100">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 text-xs text-graphite-500 flex flex-col sm:flex-row justify-between gap-2">
+        <span>© <span id="year">2026</span> СТРОЙБЮРО. Все права защищены.</span>
+        <a href="#" class="hover:text-accent-dark">Политика конфиденциальности</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================== МОДАЛЬНОЕ ОКНО ===================== -->
+  <div id="modal" class="hidden-modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-graphite-900/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="panel relative w-full max-w-md bg-white rounded-3xl shadow-lift p-6 sm:p-8 max-h-[92vh] overflow-y-auto">
+      <button id="modalClose" class="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full hover:bg-paper" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+
+      <h3 id="modalTitle" class="text-2xl font-extrabold pr-8">Вызвать замерщика</h3>
+      <p class="text-sm text-graphite-500 mt-1">Оставьте телефон — перезвоним в течение 15 минут в рабочее время.</p>
+
+      <form id="leadForm" class="mt-6 space-y-4" novalidate>
+        <div>
+          <label for="leadName" class="block text-sm font-bold mb-1.5">Ваше имя</label>
+          <input id="leadName" type="text" autocomplete="name" placeholder="Иван" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent focus:outline-none transition">
+        </div>
+        <div>
+          <label for="leadPhone" class="block text-sm font-bold mb-1.5">Телефон <span class="text-red-500">*</span></label>
+          <input id="leadPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 000-00-00" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-accent focus:outline-none transition" aria-describedby="phoneError">
+          <p id="phoneError" class="hidden mt-1.5 text-xs font-semibold text-red-600">Введите корректный номер телефона (10–11 цифр).</p>
+        </div>
+
+        <!-- Блок с данными калькулятора (показывается, если рассчитывали) -->
+        <label id="attachBlock" class="hidden flex items-start gap-3 p-4 rounded-2xl bg-accent-soft cursor-pointer">
+          <input id="attachCalc" type="checkbox" checked class="mt-1 w-5 h-5 accent-amber-500">
+          <span class="text-sm">
+            <span class="font-bold block">Прикрепить расчёт из калькулятора</span>
+            <span id="attachSummary" class="text-graphite-500 block mt-0.5"></span>
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 text-xs text-graphite-500 cursor-pointer">
+          <input id="leadAgree" type="checkbox" checked class="mt-0.5 w-4 h-4 accent-amber-500">
+          <span>Согласен на обработку персональных данных</span>
+        </label>
+        <p id="agreeError" class="hidden -mt-2 text-xs font-semibold text-red-600">Необходимо согласие на обработку данных.</p>
+
+        <button type="submit" id="leadSubmit" class="w-full py-4 rounded-xl bg-accent hover:bg-accent-dark text-graphite-900 font-extrabold transition disabled:opacity-60">Отправить заявку</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== УВЕДОМЛЕНИЕ ===================== -->
+  <div id="toast" class="fixed bottom-5 right-4 left-4 sm:left-auto sm:w-[380px] z-[60] bg-graphite-900 text-white rounded-2xl shadow-lift p-4 flex items-start gap-3" role="status" aria-live="polite">
+    <span class="w-10 h-10 rounded-full bg-accent text-graphite-900 grid place-items-center shrink-0">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </span>
+    <div>
+      <div class="font-extrabold">Заявка отправлена!</div>
+      <div id="toastText" class="text-sm text-white/70 mt-0.5">Мы перезвоним вам в ближайшее время.</div>
+    </div>
+  </div>
+
+  <style>
+    /* Стили кнопок фильтра портфолио */
+    .filter-btn { border-color: #e5e7eb; background: #fff; color: #373c45; }
+    .filter-btn:hover { border-color: #f59e0b; }
+    .filter-btn.active { background: #1c1f24; border-color: #1c1f24; color: #fff; }
+  </style>
+
+  <script>
+  /* =========================================================
+     СТРОЙБЮРО — скрипты лендинга (чистый JS, без библиотек)
+     ========================================================= */
+
+  /* ---------- Утилиты ---------- */
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  // Форматирование денег: 1 234 567 ₽
+  const fmtMoney = n => new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
+
+  /* ---------- Год в подвале ---------- */
+  $('#year').textContent = new Date().getFullYear();
+
+  /* ---------- Мобильное меню ---------- */
+  const burger = $('#burger'), mobileMenu = $('#mobileMenu'), burgerIcon = $('#burgerIcon');
+  function toggleMenu(force) {
+    const open = typeof force === 'boolean' ? force : mobileMenu.classList.contains('hidden');
+    mobileMenu.classList.toggle('hidden', !open);
+    burger.setAttribute('aria-expanded', String(open));
+    // Меняем иконку: бургер <-> крестик
+    burgerIcon.innerHTML = open
+      ? '<path d="M6 6l12 12M18 6 6 18"/>'
+      : '<path d="M4 7h16M4 12h16M4 17h16"/>';
+  }
+  burger.addEventListener('click', () => toggleMenu());
+  $$('.mobile-link').forEach(a => a.addEventListener('click', () => toggleMenu(false)));
+
+  /* ---------- Тень шапки при прокрутке ---------- */
+  const header = $('#header');
+  addEventListener('scroll', () => header.classList.toggle('shadow-card', scrollY > 10), { passive: true });
+
+  /* ---------- Появление блоков при прокрутке ---------- */
+  const io = 'IntersectionObserver' in window
+    ? new IntersectionObserver(entries => entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      }), { threshold: 0.12 })
+    : null;
+  $$('.reveal').forEach(el => io ? io.observe(el) : el.classList.add('is-visible'));
+
+  /* =========================================================
+     КАЛЬКУЛЯТОР
+     ========================================================= */
+  // Цена работ за 1 м² по виду ремонта (₽)
+  const PRICE_PER_M2 = { cosmetic: 7000, capital: 15000, design: 28000 };
+  // Коэффициент типа жилья: вторичка дороже из-за демонтажа и выравнивания
+  const HOUSING_K = { new: 1.0, old: 1.15 };
+  // Срок: рабочих дней на 1 м² по виду ремонта
+  const DAYS_PER_M2 = { cosmetic: 0.45, capital: 0.85, design: 1.2 };
+  const MIN_DAYS = { cosmetic: 14, capital: 30, design: 45 };
+  // Дополнительные опции
+  const PROJECT_PER_M2 = 1800;     // дизайн-проект, ₽/м²
+  const MATERIALS_FEE  = 0.04;     // закупка материалов, доля от стоимости работ
+  const PROJECT_DAYS   = 14;       // доп. дни на дизайн-проект
+
+  const REPAIR_NAMES  = { cosmetic: 'Косметический', capital: 'Капитальный', design: 'Дизайнерский' };
+  const HOUSING_NAMES = { new: 'Новостройка', old: 'Вторичка' };
+
+  const areaInput = $('#area');
+  // Последний результат расчёта — используется для передачи в форму заявки
+  let lastCalc = null;
+
+  function getRadio(name) { return $(`input[name="${name}"]:checked`).value; }
+
+  // Склонение «месяц/месяца/месяцев»
+  function plural(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+    return many;
+  }
+
+  // Красивый вывод сроков: диапазон в днях/неделях/месяцах
+  function formatDuration(days) {
+    const from = Math.round(days * 0.9), to = Math.round(days * 1.1);
+    if (to < 60) return `${from}–${to} ${plural(to, 'рабочий день', 'рабочих дня', 'рабочих дней')}`;
+    const mFrom = (from / 22).toFixed(1).replace('.0', '').replace('.', ',');
+    const mTo   = (to / 22).toFixed(1).replace('.0', '').replace('.', ',');
+    return `${mFrom}–${mTo} мес.`;
+  }
+
+  // Основная функция пересчёта
+  function recalc() {
+    const area    = +areaInput.value;
+    const housing = getRadio('housing');
+    const repair  = getRadio('repair');
+    const withProject   = $('input[name="opt"][value="project"]').checked;
+    const withMaterials = $('input[name="opt"][value="materials"]').checked;
+
+    // Стоимость работ
+    const work      = area * PRICE_PER_M2[repair] * HOUSING_K[housing];
+    const project   = withProject ? area * PROJECT_PER_M2 : 0;
+    const materials = withMaterials ? work * MATERIALS_FEE : 0;
+    const total     = work + project + materials;
+
+    // Сроки
+    let days = Math.max(MIN_DAYS[repair], area * DAYS_PER_M2[repair]);
+    if (housing === 'old') days *= 1.15;
+    if (withProject) days += PROJECT_DAYS;
+
+    // Вывод в интерфейс
+    $('#areaValue').textContent = area;
+    $('#totalPrice').textContent = fmtMoney(total);
+    $('#pricePerM2').textContent = `≈ ${fmtMoney(total / area)} за м²`;
+    $('#sumWork').textContent = fmtMoney(work);
+    $('#sumProject').textContent = withProject ? fmtMoney(project) : '—';
+    $('#sumMaterials').textContent = withMaterials ? fmtMoney(materials) : '—';
+    $('#totalTime').textContent = formatDuration(days);
+
+    // Заливка ползунка (цветная часть слева)
+    const pct = ((area - areaInput.min) / (areaInput.max - areaInput.min)) * 100;
+    areaInput.style.setProperty('--fill', pct + '%');
+
+    // Запоминаем расчёт
+    lastCalc = {
+      housing: HOUSING_NAMES[housing], repair: REPAIR_NAMES[repair], area,
+      project: withProject, materials: withMaterials,
+      total: fmtMoney(total), time: formatDuration(days)
+    };
+  }
+
+  // Слушаем любые изменения параметров
+  $('#calcForm').addEventListener('input', recalc);
+  $('#calcForm').addEventListener('change', recalc);
+  recalc();
+
+  // Краткое текстовое описание расчёта
+  function calcSummaryText(c) {
+    const opts = [c.project ? 'дизайн-проект' : null, c.materials ? 'закупка материалов' : null].filter(Boolean);
+    return `${c.housing}, ${c.repair.toLowerCase()} ремонт, ${c.area} м²` +
+           (opts.length ? `, опции: ${opts.join(', ')}` : '') +
+           ` — ${c.total}, сроки ${c.time}`;
+  }
+
+  /* =========================================================
+     ПОРТФОЛИО: данные, фильтры, слайдер фото
+     ========================================================= */
+  // Фото — рабочие ссылки Unsplash. При ошибке загрузки включается запасной градиент.
+  const U = id => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1000&q=80`;
+  const projects = [
+    { title: 'Светлая «двушка» в новостройке', type: 'cosmetic', area: 48, time: '5 недель', place: 'Новостройка',
+      photos: [U('photo-1502672260266-1c1ef2d93688'), U('photo-1560448204-e02f11c3d0e2'), U('photo-1484154218962-a197022b5858')] },
+    { title: 'Семейная квартира в сталинке', type: 'capital', area: 74, time: '3 месяца', place: 'Вторичка',
+      photos: [U('photo-1586023492125-27b2c045efd7'), U('photo-1556909114-f6e7ad7d3136'), U('photo-1522708323590-d24dbb6b0267')] },
+    { title: 'Квартира в скандинавском стиле', type: 'capital', area: 62, time: '2,5 месяца', place: 'Новостройка',
+      photos: [U('photo-1493809842364-78817add7ffb'), U('photo-1565538810643-b5bdb714032a'), U('photo-1618221195710-dd6b41faaea6')] },
+    { title: 'Авторский лофт с дизайн-проектом', type: 'design', area: 105, time: '5 месяцев', place: 'Вторичка',
+      photos: [U('photo-1600210492486-724fe5c67fb0'), U('photo-1600585154340-be6161a56a0c'), U('photo-1560185007-cde436f6a4d0')] }
+  ];
+  const TYPE_LABEL = { cosmetic: 'Косметический', capital: 'Капитальный', design: 'Дизайнерский' };
+  const grid = $('#portfolioGrid');
+
+  // Отрисовка карточек по выбранному фильтру
+  function renderPortfolio(filter = 'all') {
+    const list = projects
+      .map((p, i) => ({ ...p, idx: i }))
+      .filter(p => filter === 'all' || p.type === filter);
+
+    grid.innerHTML = list.map(p => `
+      <article class="bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-lift hover:-translate-y-1 transition duration-300" data-idx="${p.idx}" data-slide="0">
+        <div class="relative aspect-[4/3] bg-gradient-to-br from-graphite-700 to-graphite-900 group overflow-hidden">
+          ${p.photos.map((src, k) => `
+            <img src="${src}" alt="${p.title} — фото ${k + 1}" loading="lazy"
+                 class="slide absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${k === 0 ? 'opacity-100' : 'opacity-0'}"
+                 onerror="this.style.display='none'">`).join('')}
+          <span class="absolute top-4 left-4 px-3 py-1 rounded-full bg-white/95 text-xs font-bold">${TYPE_LABEL[p.type]}</span>
+          <button class="prev absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center" aria-label="Предыдущее фото">
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="next absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow grid place-items-center" aria-label="Следующее фото">
+            <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="dots absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+            ${p.photos.map((_, k) => `<span class="dot h-1.5 rounded-full bg-white transition-all ${k === 0 ? 'w-6' : 'w-1.5 opacity-60'}"></span>`).join('')}
+          </div>
+        </div>
+        <div class="p-5 sm:p-6">
+          <h3 class="text-xl font-extrabold">${p.title}</h3>
+          <div class="mt-4 grid grid-cols-3 gap-3 text-sm">
+            <div><div class="text-graphite-500 text-xs">Площадь</div><div class="font-extrabold">${p.area} м²</div></div>
+            <div><div class="text-graphite-500 text-xs">Срок</div><div class="font-extrabold">${p.time}</div></div>
+            <div><div class="text-graphite-500 text-xs">Тип</div><div class="font-extrabold">${p.place}</div></div>
+          </div>
+        </div>
+      </article>`).join('');
+
+    $('#portfolioEmpty').classList.toggle('hidden', list.length > 0);
+  }
+
+  // Делегирование кликов по стрелкам слайдера
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.prev, .next');
+    if (!btn) return;
+    const card = btn.closest('article');
+    const slides = $$('.slide', card), dots = $$('.dot', card);
+    let cur = +card.dataset.slide;
+    cur = (cur + (btn.classList.contains('next') ? 1 : -1) + slides.length) % slides.length;
+    card.dataset.slide = cur;
+    slides.forEach((s, i) => s.classList.toggle('opacity-0', i !== cur));
+    slides.forEach((s, i) => s.classList.toggle('opacity-100', i === cur));
+    dots.forEach((d, i) => {
+      d.classList.toggle('w-6', i === cur);
+      d.classList.toggle('w-1.5', i !== cur);
+      d.classList.toggle('opacity-60', i !== cur);
+    });
+  });
+
+  // Фильтры
+  $('#filters').addEventListener('click', e => {
+    const b = e.target.closest('.filter-btn');
+    if (!b) return;
+    $$('.filter-btn').forEach(x => x.classList.toggle('active', x === b));
+    renderPortfolio(b.dataset.filter);
+  });
+  renderPortfolio();
+
+  /* =========================================================
+     FAQ-АККОРДЕОН
+     ========================================================= */
+  $('#faqList').addEventListener('click', e => {
+    const btn = e.target.closest('.faq-btn');
+    if (!btn) return;
+    const item = btn.closest('.faq-item');
+    const willOpen = !item.classList.contains('open');
+    // Закрываем остальные (открыт только один пункт)
+    $$('.faq-item').forEach(i => {
+      i.classList.remove('open');
+      $('.faq-btn', i).setAttribute('aria-expanded', 'false');
+    });
+    if (willOpen) { item.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+  });
+  // По умолчанию раскрыт первый вопрос
+  $('.faq-item').classList.add('open');
+  $('.faq-btn').setAttribute('aria-expanded', 'true');
+
+  /* =========================================================
+     МОДАЛЬНОЕ ОКНО + ВАЛИДАЦИЯ + УВЕДОМЛЕНИЕ
+     ========================================================= */
+  const modal = $('#modal'), phoneInput = $('#leadPhone'), phoneError = $('#phoneError');
+  const attachBlock = $('#attachBlock'), attachCalc = $('#attachCalc');
+  let lastFocus = null;
+
+  function openModal(withCalc = false) {
+    lastFocus = document.activeElement;
+    // Показываем блок «прикрепить расчёт» только если пользователь открыл форму из калькулятора
+    attachBlock.classList.toggle('hidden', !withCalc);
+    attachBlock.classList.toggle('flex', withCalc);
+    if (withCalc && lastCalc) $('#attachSummary').textContent = calcSummaryText(lastCalc);
+    modal.classList.remove('hidden-modal');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    toggleMenu(false);
+    setTimeout(() => $('#leadName').focus(), 150);
+  }
+  function closeModal() {
+    modal.classList.add('hidden-modal');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (lastFocus) lastFocus.focus();
+  }
+
+  // Все кнопки «Вызвать замерщика»
+  $$('[data-open-modal]').forEach(b => b.addEventListener('click', () => openModal(false)));
+  // Кнопка из калькулятора — передаём данные расчёта
+  $('#calcToModal').addEventListener('click', () => openModal(true));
+  $('#modalClose').addEventListener('click', closeModal);
+  modal.addEventListener('mousedown', e => { if (e.target === modal) closeModal(); }); // клик по фону
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden-modal')) closeModal(); });
+
+  // Маска телефона: +7 (XXX) XXX-XX-XX
+  function formatPhone(value) {
+    let d = value.replace(/\D/g, '');
+    if (!d) return '';
+    if (d[0] === '8') d = '7' + d.slice(1);      // 8900... -> 7900...
+    if (d[0] !== '7') d = '7' + d;               // добавляем код страны
+    d = d.slice(0, 11);
+    let out = '+7';
+    if (d.length > 1) out += ' (' + d.slice(1, 4);
+    if (d.length >= 5) out += ') ' + d.slice(4, 7);
+    if (d.length >= 8) out += '-' + d.slice(7, 9);
+    if (d.length >= 10) out += '-' + d.slice(9, 11);
+    return out;
+  }
+  phoneInput.addEventListener('input', () => {
+    phoneInput.value = formatPhone(phoneInput.value);
+    phoneInput.classList.remove('border-red-500');
+    phoneError.classList.add('hidden');
+  });
+
+  // Проверка телефона: после маски должно быть ровно 11 цифр (7 + 10)
+  const isPhoneValid = v => v.replace(/\D/g, '').length === 11;
+
+  // Показ уведомления
+  let toastTimer;
+  function showToast(text) {
+    $('#toastText').textContent = text;
+    const t = $('#toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+  }
+
+  // Отправка формы (без перезагрузки страницы)
+  $('#leadForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    let ok = true;
+
+    if (!isPhoneValid(phoneInput.value)) {
+      phoneError.classList.remove('hidden');
+      phoneInput.classList.add('border-red-500');
+      phoneInput.focus();
+      ok = false;
+    }
+    const agree = $('#leadAgree').checked;
+    $('#agreeError').classList.toggle('hidden', agree);
+    if (!agree) ok = false;
+    if (!ok) return;
+
+    // Формируем данные заявки
+    const payload = {
+      name: $('#leadName').value.trim(),
+      phone: phoneInput.value,
+      calculation: (!attachBlock.classList.contains('hidden') && attachCalc.checked && lastCalc) ? lastCalc : null
+    };
+
+    const btn = $('#leadSubmit');
+    btn.disabled = true; btn.textContent = 'Отправляем…';
+
+    /* Здесь подключается реальная отправка на сервер, например:
+       await fetch('/api/lead', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+       Сейчас — имитация задержки сети и вывод данных в консоль. */
+    await new Promise(r => setTimeout(r, 900));
+    console.log('Заявка:', payload);
+
+    btn.disabled = false; btn.textContent = 'Отправить заявка'.replace('заявка', 'заявку');
+    $('#leadForm').reset();
+    closeModal();
+    const who = payload.name ? `${payload.name}, мы` : 'Мы';
+    showToast(`${who} перезвоним вам на ${payload.phone}` + (payload.calculation ? ' и пришлём точную смету.' : '.'));
+  });
+  </script>
+</body>
+</html>
